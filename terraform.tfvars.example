@@ -1,0 +1,26 @@
+# Juro Tier 3 — GCP install variables
+# Copy to terraform.tfvars and fill in all required values before running
+# `terraform plan`. Do NOT put credentials here — GCP creds come from
+# `gcloud auth application-default login` or a service account key in the
+# standard environment (GOOGLE_APPLICATION_CREDENTIALS).
+
+# Required — set from the SOW
+project_id      = "acme-corp-prod-12345"
+gcp_region      = "us-central1"
+agent_image_tag = "1.0.0"                             # must match SOW pin
+engagement_slug = "acme-corp"                          # kebab-case, no spaces
+expires_at      = "2026-11-12T00:00:00Z"               # RFC 3339
+
+# Required — customer-provided from Phase 0 prereqs
+artifact_store_bucket = "acme-juro-artifacts"          # customer-owned GCS bucket
+oidc_issuer           = "https://accounts.google.com"  # or corporate Workload Identity pool
+
+# Optional — override only if mirroring rule packs internally
+# rule_pack_registry = "ghcr.io/jecertis/juro-rules"
+
+# Optional — set to false to disable transparency log publishing
+# telemetry_enabled = true
+
+# Optional — override to change scan cadence (standard cron syntax)
+# scan_schedule          = "0 3 * * *"
+# scan_schedule_timezone = "Etc/UTC"
