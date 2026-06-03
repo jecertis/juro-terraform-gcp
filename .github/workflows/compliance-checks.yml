@@ -24,6 +24,7 @@ jobs:
           path: juro-platform-scripts
           sparse-checkout: |
             scripts/check-banned-claims.sh
+            scripts/check-agent-preamble.sh
             contracts/banned-claims.md
             contracts/agent-preamble.md
           sparse-checkout-cone-mode: false
