@@ -75,7 +75,20 @@ variable "engagement_slug" {
   type        = string
 }
 
+# expires_at — engagement expiry (externally enforced)
+#
+# GCP IAM does not natively expire service accounts or custom roles. Enforcement is
+# the customer's responsibility: when the engagement ends, run:
+#
+#   terraform destroy -var-file="terraform.tfvars"
+#
+# This removes all resources created by this module (service accounts, custom IAM
+# role, Cloud Run service, Cloud Scheduler job, Secret Manager secrets). The artifact
+# store bucket is customer-owned and is NOT destroyed — findings are retained by the
+# customer per their own retention policy.
+#
+# Recommended: set a calendar reminder for the expires_at date at engagement start.
 variable "expires_at" {
-  description = "Engagement expiration date (RFC 3339). Externally enforced — GCP IAM does not natively expire roles."
+  description = "Engagement expiration date (RFC 3339). Externally enforced — GCP IAM does not natively expire roles. Run `terraform destroy -var-file=terraform.tfvars` when the engagement ends."
   type        = string
 }
