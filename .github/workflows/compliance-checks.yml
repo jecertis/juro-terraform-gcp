@@ -16,40 +16,34 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Checkout juro-platform scripts
-        uses: actions/checkout@v4
-        with:
-          repository: jecertis/juro-platform
-          token: ${{ secrets.JURO_PLATFORM_READ_TOKEN }}
-          path: juro-platform-scripts
-          sparse-checkout: |
-            scripts/check-banned-claims.sh
-            contracts/banned-claims.md
-            contracts/agent-preamble.md
-          sparse-checkout-cone-mode: false
-
       - name: Make scripts executable
-        run: chmod +x juro-platform-scripts/scripts/check-banned-claims.sh juro-platform-scripts/scripts/check-agent-preamble.sh
+        # Scripts are vendored from juro-platform/scripts/. juro-platform
+        # is private, so cross-repo checkout requires a PAT secret.
+        # Vendoring eliminates that dependency — re-vendor when the
+        # canonical list changes in juro-platform.
+        run: chmod +x .github/scripts/check-banned-claims.sh .github/scripts/check-agent-preamble.sh
 
       - name: Collect markdown files for banned-claims check
         run: |
           set -e
           files=()
+          # CLAUDE.md is an agent instruction file that quotes banned phrases
+          # in their prohibited context — exclude it from the marketing-surface check.
           [[ -f README.md ]] && files+=("README.md")
-          [[ -f CLAUDE.md ]] && files+=("CLAUDE.md")
           while IFS= read -r -d '' f; do
+            [[ "$f" == "./CLAUDE.md" ]] && continue
+            [[ "$f" == "./.github/contracts/agent-preamble.md" ]] && continue
             files+=("$f")
-          done < <(find . -name '*.md' -not -path './.git/*' -not -path './juro-platform-scripts/*' -print0 2>/dev/null || true)
+          done < <(find . -name '*.md' -not -path './.git/*' -print0 2>/dev/null || true)
           printf '%s\n' "${files[@]}" > files.txt
 
       - name: Run banned-claims check
         run: |
-          juro-platform-scripts/scripts/check-banned-claims.sh \
-            --banned-claims juro-platform-scripts/contracts/banned-claims.md \
-            --files files.txt
+          if [[ -s files.txt ]]; then
+            xargs -a files.txt .github/scripts/check-banned-claims.sh
+          else
+            echo "No markdown files found — skipping banned-claims check"
+          fi
 
       - name: Run agent-preamble check
-        run: |
-          juro-platform-scripts/scripts/check-agent-preamble.sh \
-            --canonical juro-platform-scripts/contracts/agent-preamble.md \
-            CLAUDE.md
+        run: .github/scripts/check-agent-preamble.sh CLAUDE.md
