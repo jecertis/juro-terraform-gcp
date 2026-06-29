@@ -73,8 +73,6 @@ resource "google_project_iam_custom_role" "agent" {
     "apigateway.gateways.list",
     "bigquery.datasets.get",
     "bigquery.datasets.getIamPolicy",
-    "bigquery.datasets.list",
-    "bigquery.routines.list",
     "bigquery.tables.get",
     "bigquery.tables.getIamPolicy",
     "bigquery.tables.list",
@@ -291,7 +289,7 @@ resource "google_cloud_run_v2_service" "agent" {
     }
 
     containers {
-      image = "ghcr.io/jecertis/cloud-scanner:${var.agent_image_tag}"
+      image = "docker.io/jecertis/cloud-scanner:${var.agent_image_tag}"
 
       env {
         name  = "JURO_ENGAGEMENT_SLUG"

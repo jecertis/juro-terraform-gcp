@@ -42,7 +42,7 @@ GCP environment — all provisioning runs from the customer side.
 |------|-------------|----------|---------|
 | `project_id` | Customer GCP project ID where the agent runs and reads from | yes | `acme-prod-123456` |
 | `gcp_region` | GCP region for Cloud Run service and Cloud Scheduler job | yes | `asia-south1` |
-| `agent_image_tag` | Pinned tag of the `ghcr.io/jecertis/cloud-scanner` image. Set from the SOW. | yes | `v1.4.2` |
+| `agent_image_tag` | Pinned tag of the `docker.io/jecertis/cloud-scanner` image. Set from the SOW. | yes | `v1.4.2` |
 | `engagement_slug` | Juro engagement slug (kebab-case). Used in resource names and labels. | yes | `acme-gdpr-2026` |
 | `artifact_store_bucket` | Customer-owned GCS bucket where signed scan artifacts are written | yes | `acme-juro-artifacts` |
 | `oidc_issuer` | OIDC provider URL for Workload Identity / Fulcio leaf certificate issuance | yes | `https://accounts.google.com` |
