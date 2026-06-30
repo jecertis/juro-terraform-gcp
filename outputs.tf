@@ -1,6 +1,6 @@
-output "agent_service_url" {
-  description = "URL of the Juro agent Cloud Run service. Use this to trigger `juro preflight` (Phase 2.1) or a manual scan."
-  value       = google_cloud_run_v2_service.agent.uri
+output "agent_job_name" {
+  description = "Cloud Run Job name. Trigger a manual scan with: gcloud run jobs execute <name> --region=<region> --project=<project>"
+  value       = google_cloud_run_v2_job.agent.name
 }
 
 output "agent_service_account_email" {

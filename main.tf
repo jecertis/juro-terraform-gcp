@@ -270,81 +270,82 @@ resource "google_secret_manager_secret_iam_member" "agent_telemetry" {
 }
 
 # -----------------------------------------------------------------------------
-# Cloud Run service — the agent container
-# Runs on-demand (max-instances=1) and is invoked by Cloud Scheduler.
-# Not publicly accessible — unauthenticated invocations denied.
+# Cloud Run Job — the agent container (batch mode)
+# Runs to completion on each invocation; triggered by Cloud Scheduler.
+# No persistent service — scales to zero between scans, no public URL.
 # -----------------------------------------------------------------------------
 
-resource "google_cloud_run_v2_service" "agent" {
+resource "google_cloud_run_v2_job" "agent" {
   project  = var.project_id
   name     = local.name_prefix
   location = var.gcp_region
 
   template {
-    service_account = google_service_account.agent.email
+    task_count  = 1
+    parallelism = 1
 
-    scaling {
-      min_instance_count = 0
-      max_instance_count = 1
-    }
+    template {
+      service_account = google_service_account.agent.email
+      max_retries     = 0
 
-    containers {
-      image = "ghcr.io/jecertis/cloud-scanner:${var.agent_image_tag}"
+      containers {
+        image = "ghcr.io/jecertis/cloud-scanner:${var.agent_image_tag}"
 
-      env {
-        name  = "JURO_ENGAGEMENT_SLUG"
-        value = var.engagement_slug
-      }
+        env {
+          name  = "JURO_ENGAGEMENT_SLUG"
+          value = var.engagement_slug
+        }
 
-      env {
-        name  = "JURO_ARTIFACT_STORE"
-        value = "gs://${var.artifact_store_bucket}/juro/${var.engagement_slug}"
-      }
+        env {
+          name  = "JURO_ARTIFACT_STORE"
+          value = "gs://${var.artifact_store_bucket}/juro/${var.engagement_slug}"
+        }
 
-      env {
-        name  = "JURO_OIDC_ISSUER"
-        value = var.oidc_issuer
-      }
+        env {
+          name  = "JURO_OIDC_ISSUER"
+          value = var.oidc_issuer
+        }
 
-      env {
-        name  = "JURO_CLOUD"
-        value = "gcp"
-      }
+        env {
+          name  = "JURO_CLOUD"
+          value = "gcp"
+        }
 
-      env {
-        name  = "JURO_REGION"
-        value = var.gcp_region
-      }
+        env {
+          name  = "JURO_REGION"
+          value = var.gcp_region
+        }
 
-      env {
-        name  = "JURO_PROJECT_ID"
-        value = var.project_id
-      }
+        env {
+          name  = "JURO_PROJECT_ID"
+          value = var.project_id
+        }
 
-      env {
-        name = "JURO_RULE_PACK_REGISTRY"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.rule_pack_registry.secret_id
-            version = "latest"
+        env {
+          name = "JURO_RULE_PACK_REGISTRY"
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.rule_pack_registry.secret_id
+              version = "latest"
+            }
           }
         }
-      }
 
-      env {
-        name = "JURO_TELEMETRY_ENABLED"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.telemetry_enabled.secret_id
-            version = "latest"
+        env {
+          name = "JURO_TELEMETRY_ENABLED"
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.telemetry_enabled.secret_id
+              version = "latest"
+            }
           }
         }
-      }
 
-      resources {
-        limits = {
-          cpu    = "1"
-          memory = "1Gi"
+        resources {
+          limits = {
+            cpu    = "1"
+            memory = "1Gi"
+          }
         }
       }
     }
@@ -354,33 +355,25 @@ resource "google_cloud_run_v2_service" "agent" {
   depends_on = [google_project_service.required]
 }
 
-# Block unauthenticated invocations
-resource "google_cloud_run_v2_service_iam_binding" "no_public_access" {
-  project  = var.project_id
-  location = var.gcp_region
-  name     = google_cloud_run_v2_service.agent.name
-  role     = "roles/run.invoker"
-  members  = []
-}
-
-# Cloud Scheduler service account — allowed to invoke the Cloud Run service
+# Cloud Scheduler service account — allowed to run the Cloud Run Job
 resource "google_service_account" "scheduler" {
   project      = var.project_id
   account_id   = "juro-scheduler"
   display_name = "Juro Cloud Scheduler invoker"
-  description  = "Allows Cloud Scheduler to trigger the Juro agent Cloud Run service. Engagement: ${var.engagement_slug}."
+  description  = "Allows Cloud Scheduler to trigger the Juro agent Cloud Run job. Engagement: ${var.engagement_slug}."
 }
 
-resource "google_cloud_run_v2_service_iam_member" "scheduler_invoke" {
+resource "google_cloud_run_v2_job_iam_member" "scheduler_invoke" {
   project  = var.project_id
   location = var.gcp_region
-  name     = google_cloud_run_v2_service.agent.name
+  name     = google_cloud_run_v2_job.agent.name
   role     = "roles/run.invoker"
   member   = "serviceAccount:${google_service_account.scheduler.email}"
 }
 
 # -----------------------------------------------------------------------------
-# Cloud Scheduler — scheduled scan job
+# Cloud Scheduler — triggers the Cloud Run Job on schedule
+# Uses oauth_token (Cloud platform scope) to call the Cloud Run Admin API.
 # -----------------------------------------------------------------------------
 
 resource "google_cloud_scheduler_job" "scan_schedule" {
@@ -392,11 +385,11 @@ resource "google_cloud_scheduler_job" "scan_schedule" {
 
   http_target {
     http_method = "POST"
-    uri         = "${google_cloud_run_v2_service.agent.uri}/scan"
+    uri         = "https://run.googleapis.com/v2/projects/${var.project_id}/locations/${var.gcp_region}/jobs/${local.name_prefix}:run"
 
-    oidc_token {
+    oauth_token {
       service_account_email = google_service_account.scheduler.email
-      audience              = google_cloud_run_v2_service.agent.uri
+      scope                 = "https://www.googleapis.com/auth/cloud-platform"
     }
   }
 
