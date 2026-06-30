@@ -289,7 +289,7 @@ resource "google_cloud_run_v2_service" "agent" {
     }
 
     containers {
-      image = "docker.io/jecertis/cloud-scanner:${var.agent_image_tag}"
+      image = "ghcr.io/jecertis/cloud-scanner:${var.agent_image_tag}"
 
       env {
         name  = "JURO_ENGAGEMENT_SLUG"
