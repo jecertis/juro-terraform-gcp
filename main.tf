@@ -73,8 +73,6 @@ resource "google_project_iam_custom_role" "agent" {
     "apigateway.gateways.list",
     "bigquery.datasets.get",
     "bigquery.datasets.getIamPolicy",
-    "bigquery.datasets.list",
-    "bigquery.routines.list",
     "bigquery.tables.get",
     "bigquery.tables.getIamPolicy",
     "bigquery.tables.list",
